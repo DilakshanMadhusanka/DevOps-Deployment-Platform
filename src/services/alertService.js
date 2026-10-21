@@ -1,5 +1,4 @@
 const EventEmitter = require('events');
-const { v4: uuidv4 } = require('uuid');
 const logService = require('./logService');
 const metricsService = require('./metricsService');
 

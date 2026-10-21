@@ -1,5 +1,5 @@
+const crypto = require('crypto');
 const EventEmitter = require('events');
-const { v4: uuidv4 } = require('uuid');
 const config = require('../config');
 
 class LogService extends EventEmitter {
@@ -71,7 +71,7 @@ class LogService extends EventEmitter {
 
     initialEntries.forEach((item) => {
       this.logs.push({
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         timestamp: new Date(now + item.offsetMs).toISOString(),
         level: item.level,
         component: item.component,
@@ -85,7 +85,7 @@ class LogService extends EventEmitter {
 
   log(level, component, message, options = {}) {
     const entry = {
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
       level: (level || 'INFO').toUpperCase(),
       component: component || 'control-plane',
@@ -101,7 +101,6 @@ class LogService extends EventEmitter {
     }
 
     if (config.nodeEnv !== 'test') {
-      // Structured JSON log output for container stdout scraping (Promtail / FluentBit / CloudWatch)
       process.stdout.write(`${JSON.stringify(entry)}\n`);
     }
 

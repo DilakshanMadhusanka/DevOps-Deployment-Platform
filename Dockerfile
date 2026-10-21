@@ -8,6 +8,7 @@ WORKDIR /app
 RUN apk add --no-cache dumb-init
 
 COPY package.json package-lock.json* ./
+COPY scripts/clean-node-modules.js ./scripts/clean-node-modules.js
 RUN npm ci --omit=dev && npm cache clean --force
 
 # ============================================================================
@@ -16,6 +17,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 FROM node:20-alpine AS test
 WORKDIR /app
 COPY package.json package-lock.json* ./
+COPY scripts/clean-node-modules.js ./scripts/clean-node-modules.js
 RUN npm ci
 COPY src ./src
 COPY tests ./tests

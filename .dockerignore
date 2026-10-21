@@ -5,7 +5,6 @@ npm-debug.log
 k8s
 monitoring
 nginx
-scripts
 *.md
 .env
 .env.*
