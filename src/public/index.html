@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AegisDeploy — Production DevOps Deployment & Observability Platform</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Top Global Status Header -->
+    <header class="top-header">
+      <div class="brand-group">
+        <div class="brand-logo" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 22 7 22 17 12 22 2 17 2 7 12 2"></polygon>
+            <polyline points="12 22 12 12"></polyline>
+            <polyline points="22 7 12 12 2 7"></polyline>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title-row">
+            <h1>AegisDeploy</h1>
+            <span class="badge badge-cyan" id="platform-version">v1.4.2</span>
+            <span class="badge badge-outline" id="cluster-badge">eks-us-east-1-prod</span>
+          </div>
+          <p class="brand-subtitle">CI/CD Pipelines • Docker Registry • Kubernetes Rolling Updates &amp; Rollbacks • Prometheus &amp; Grafana</p>
+        </div>
+      </div>
+
+      <div class="header-indicators">
+        <div class="probe-pill" title="Kubernetes Liveness & Readiness Probes">
+          <span class="dot dot-green"></span>
+          <span>K8s Probes: <strong id="probe-status-text">LIVE / READY</strong></span>
+        </div>
+        <div class="probe-pill" title="Nginx Ingress & Upstream Gateway">
+          <span class="dot dot-cyan"></span>
+          <span>Nginx TLSv1.3: <strong>ACTIVE</strong></span>
+        </div>
+        <div class="probe-pill" title="Server-Sent Events Real-Time Telemetry">
+          <span class="dot dot-green" id="sse-dot"></span>
+          <span id="sse-status">Stream Connected</span>
+        </div>
+        <a href="/metrics" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" title="Raw OpenMetrics / Prometheus Scrape Endpoint">
+          <span>/metrics</span>
+        </a>
+        <button class="btn btn-primary btn-sm" id="btn-open-pipeline-modal">
+          + Trigger CI/CD Pipeline
+        </button>
+      </div>
+    </header>
+
+    <!-- KPI Summary Ribbon -->
+    <section class="kpi-grid" aria-label="Platform Key Metrics">
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">K8s Cluster Pods Ready</span>
+          <span class="badge badge-green" id="kpi-deployments-healthy">4/4 Healthy</span>
+        </div>
+        <div class="kpi-value" id="kpi-pods-ready">14 / 14</div>
+        <div class="kpi-foot">Zero-downtime <code>RollingUpdate</code> active</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">CI/CD Build &amp; Test Pipelines</span>
+          <span class="badge badge-cyan" id="kpi-pipeline-rate">97.4% Pass</span>
+        </div>
+        <div class="kpi-value" id="kpi-pipeline-total">116 Runs</div>
+        <div class="kpi-foot" id="kpi-latest-pipeline">Latest: pipe-1042 (41.2s)</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">Docker Registry (GHCR)</span>
+          <span class="badge badge-green">Cosign + Trivy</span>
+        </div>
+        <div class="kpi-value" id="kpi-images-count">5 Artifacts</div>
+        <div class="kpi-foot">Multi-arch <code>linux/amd64, arm64</code></div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">Ingress Throughput &amp; P95</span>
+          <span class="badge badge-outline" id="kpi-err-rate">0.12% 5xx</span>
+        </div>
+        <div class="kpi-value"><span id="kpi-rps">1,420</span> <small>req/s</small></div>
+        <div class="kpi-foot">P95 Latency: <strong id="kpi-p95">28.4 ms</strong> via Nginx</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">Active Prometheus Alerts</span>
+          <span class="badge badge-amber" id="kpi-alert-badge">1 Firing</span>
+        </div>
+        <div class="kpi-value" id="kpi-alerts-firing">1 Active</div>
+        <div class="kpi-foot" id="kpi-log-count">Centralized Logs buffered</div>
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs" role="tablist">
+      <button class="tab-btn active" data-tab="tab-k8s" role="tab">
+        Kubernetes Deployments &amp; Rollbacks
+      </button>
+      <button class="tab-btn" data-tab="tab-pipelines" role="tab">
+        Automated Build &amp; Test Pipelines
+      </button>
+      <button class="tab-btn" data-tab="tab-registry" role="tab">
+        Docker Registry &amp; Trivy Scans
+      </button>
+      <button class="tab-btn" data-tab="tab-observability" role="tab">
+        Centralized Logs, Metrics &amp; Alerts
+      </button>
+      <button class="tab-btn" data-tab="tab-infra" role="tab">
+        DevOps Stack Blueprints (K8s / Nginx / CI)
+      </button>
+    </nav>
+
+    <!-- MAIN CONTENT PANELS -->
+    <main class="main-content">
+      <!-- TAB 1: KUBERNETES DEPLOYMENTS, ROLLING UPDATES & ROLLBACKS -->
+      <section id="tab-k8s" class="tab-panel active">
+        <div class="section-header">
+          <div>
+            <h2>Kubernetes Production Workloads &amp; Health Probes</h2>
+            <p>Manage zero-downtime <code>RollingUpdate</code> deployments, verify Liveness/Readiness probes, scale HPA replicas, and execute instant revision rollbacks.</p>
+          </div>
+          <div class="section-actions">
+            <span class="mono-pill">namespace: <strong>production</strong></span>
+            <span class="mono-pill">strategy: <strong>RollingUpdate (maxUnavailable=0)</strong></span>
+          </div>
+        </div>
+
+        <div id="k8s-deployments-list" class="deployments-grid"></div>
+      </section>
+
+      <!-- TAB 2: AUTOMATED BUILD & TEST PIPELINES -->
+      <section id="tab-pipelines" class="tab-panel">
+        <div class="section-header">
+          <div>
+            <h2>GitHub Actions Automated Build, Test &amp; Deploy Pipelines</h2>
+            <p>5-Stage Continuous Delivery: Static Analysis &rarr; Unit/Integration Tests &rarr; Multi-Stage Docker Build &amp; Trivy Scan &rarr; GHCR Publish &rarr; K8s Rollout.</p>
+          </div>
+          <div class="section-actions">
+            <select id="pipeline-service-filter" class="input-select">
+              <option value="ALL">All Microservices</option>
+              <option value="payment-gateway-api">payment-gateway-api</option>
+              <option value="auth-identity-service">auth-identity-service</option>
+              <option value="order-orchestrator">order-orchestrator</option>
+              <option value="realtime-telemetry-ingest">realtime-telemetry-ingest</option>
+            </select>
+            <button class="btn btn-primary" id="btn-trigger-pipeline-inline">
+              &#9654; Run New Pipeline
+            </button>
+          </div>
+        </div>
+
+        <div id="pipelines-list" class="pipelines-list"></div>
+      </section>
+
+      <!-- TAB 3: DOCKER IMAGE CREATION & REGISTRY PUBLISHING -->
+      <section id="tab-registry" class="tab-panel">
+        <div class="section-header">
+          <div>
+            <h2>Container Registry (GHCR) &amp; Security Attestations</h2>
+            <p>Immutable multi-architecture Docker images built with non-root Alpine stages, scanned with Trivy, and signed with Sigstore Cosign.</p>
+          </div>
+          <div class="section-actions">
+            <div class="inline-form">
+              <select id="build-image-service" class="input-select">
+                <option value="payment-gateway-api">payment-gateway-api</option>
+                <option value="auth-identity-service">auth-identity-service</option>
+                <option value="order-orchestrator">order-orchestrator</option>
+                <option value="realtime-telemetry-ingest">realtime-telemetry-ingest</option>
+              </select>
+              <input type="text" id="build-image-tag" class="input-text" placeholder="Tag (e.g. v2.4.1)" />
+              <button class="btn btn-primary" id="btn-build-docker-image">
+                Build &amp; Push Image
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Repository &amp; Tag</th>
+                <th>SHA-256 Digest</th>
+                <th>Commit</th>
+                <th>Arch / Base</th>
+                <th>Size</th>
+                <th>Trivy CVE Scan</th>
+                <th>Cosign</th>
+                <th>Published</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="registry-images-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 4: CENTRALIZED LOGS, PROMETHEUS METRICS & ALERTS -->
+      <section id="tab-observability" class="tab-panel">
+        <!-- Prometheus / Grafana Real-Time Charts -->
+        <div class="observability-top-grid">
+          <div class="chart-card">
+            <div class="chart-header">
+              <div>
+                <h3>Cluster CPU &amp; Memory Working Set (%)</h3>
+                <span class="chart-sub">Prometheus metric: <code>devops_cluster_resource_utilization_percent</code></span>
+              </div>
+              <div class="chart-legend">
+                <span class="legend-item"><i class="swatch swatch-cyan"></i> CPU: <strong id="chart-cpu-val">46%</strong></span>
+                <span class="legend-item"><i class="swatch swatch-purple"></i> Memory: <strong id="chart-mem-val">62%</strong></span>
+              </div>
+            </div>
+            <svg id="svg-chart-resources" class="telemetry-svg" viewBox="0 0 600 170" preserveAspectRatio="none"></svg>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <div>
+                <h3>Nginx Ingress Request Rate (RPS) &amp; P95 Latency (ms)</h3>
+                <span class="chart-sub">Prometheus metric: <code>devops_http_request_duration_seconds</code></span>
+              </div>
+              <div class="chart-legend">
+                <span class="legend-item"><i class="swatch swatch-emerald"></i> Throughput: <strong id="chart-rps-val">1420 rps</strong></span>
+                <span class="legend-item"><i class="swatch swatch-amber"></i> P95 Latency: <strong id="chart-lat-val">28 ms</strong></span>
+              </div>
+            </div>
+            <svg id="svg-chart-traffic" class="telemetry-svg" viewBox="0 0 600 170" preserveAspectRatio="none"></svg>
+          </div>
+        </div>
+
+        <!-- Alerts & Centralized Logs Split View -->
+        <div class="observability-bottom-grid">
+          <!-- Prometheus Alertmanager Panel -->
+          <div class="panel-card">
+            <div class="panel-card-header">
+              <div>
+                <h3>Prometheus Alertmanager &amp; SLO Rules</h3>
+                <p>Active firing alerts and configured PromQL thresholds</p>
+              </div>
+              <button class="btn btn-amber btn-sm" id="btn-simulate-alert">
+                Simulate Incident Alert
+              </button>
+            </div>
+            <div id="alerts-list" class="alerts-list"></div>
+
+            <div class="rules-divider">Configured PromQL Alerting Rules (<code>monitoring/prometheus/alert.rules.yml</code>)</div>
+            <div id="alert-rules-list" class="rules-list"></div>
+          </div>
+
+          <!-- Centralized Log Aggregator Stream -->
+          <div class="panel-card">
+            <div class="panel-card-header">
+              <div>
+                <h3>Centralized Structured Log Stream</h3>
+                <p>Real-time JSON logs from Kubernetes pods, Nginx ingress, Docker registry &amp; CI runners</p>
+              </div>
+              <div class="log-controls">
+                <select id="log-level-filter" class="input-select input-sm">
+                  <option value="ALL">All Levels</option>
+                  <option value="INFO">INFO</option>
+                  <option value="WARN">WARN</option>
+                  <option value="ERROR">ERROR</option>
+                </select>
+                <select id="log-component-filter" class="input-select input-sm">
+                  <option value="ALL">All Components</option>
+                  <option value="k8s-controller">k8s-controller</option>
+                  <option value="github-actions-runner">github-actions-runner</option>
+                  <option value="docker-registry">docker-registry</option>
+                  <option value="nginx-ingress">nginx-ingress</option>
+                  <option value="prometheus-alertmanager">prometheus-alertmanager</option>
+                  <option value="health-probe">health-probe</option>
+                </select>
+                <input type="text" id="log-search-input" class="input-text input-sm" placeholder="Filter traceId, service, msg..." />
+              </div>
+            </div>
+            <div id="logs-terminal" class="logs-terminal" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: INFRASTRUCTURE & DEVOPS STACK BLUEPRINTS -->
+      <section id="tab-infra" class="tab-panel">
+        <div class="section-header">
+          <div>
+            <h2>Production DevOps Stack &amp; Infrastructure-as-Code Files</h2>
+            <p>All production manifests included in this repository for Docker, Kubernetes, GitHub Actions, Nginx, Prometheus, and Grafana.</p>
+          </div>
+        </div>
+
+        <div class="infra-grid">
+          <div class="infra-card">
+            <div class="infra-badge">GitHub Actions CI/CD</div>
+            <h3><code>.github/workflows/ci-cd.yml</code></h3>
+            <p>Automated pipeline triggered on push/PR to <code>main</code>. Runs Node.js test runner, builds multi-arch Docker image with Buildx, scans for CVEs with Aqua Trivy, pushes to GHCR, and executes <code>kubectl rollout status</code> with automatic rollback on failure.</p>
+          </div>
+          <div class="infra-card">
+            <div class="infra-badge">Multi-Stage Docker</div>
+            <h3><code>Dockerfile</code> &amp; <code>docker-compose.yml</code></h3>
+            <p>Hardened multi-stage <code>node:20-alpine</code> image with dumb-init, non-root user (UID 1001), built-in <code>HEALTHCHECK</code> against <code>/health/live</code>, and full local orchestration with Nginx, Prometheus, Alertmanager, and Grafana.</p>
+          </div>
+          <div class="infra-card">
+            <div class="infra-badge">Kubernetes Manifests</div>
+            <h3><code>k8s/deployment.yaml</code>, <code>hpa.yaml</code>, <code>ingress.yaml</code></h3>
+            <p>Zero-downtime <code>RollingUpdate</code> (<code>maxSurge: 25%</code>, <code>maxUnavailable: 0</code>), Pod anti-affinity, startup/liveness/readiness probes, HorizontalPodAutoscaler, PodDisruptionBudget, and scripts for rolling updates &amp; rollbacks.</p>
+          </div>
+          <div class="infra-card">
+            <div class="infra-badge">Nginx Reverse Proxy</div>
+            <h3><code>nginx/nginx.conf</code></h3>
+            <p>Production API gateway with upstream load balancing, passive health checks, connection keepalive pools, rate limiting zones, gzip compression, security headers, SSE streaming support, and <code>/nginx_status</code> stub metrics.</p>
+          </div>
+          <div class="infra-card">
+            <div class="infra-badge">Prometheus &amp; Alerting</div>
+            <h3><code>monitoring/prometheus/prometheus.yml</code> &amp; <code>alert.rules.yml</code></h3>
+            <p>15s scrape configuration collecting Node.js runtime metrics, HTTP request histograms, CI/CD pipeline counters, Kubernetes replica gauges, and PromQL SLO alerting rules.</p>
+          </div>
+          <div class="infra-card">
+            <div class="infra-badge">Grafana Dashboards</div>
+            <h3><code>monitoring/grafana/dashboards/devops-platform-dashboard.json</code></h3>
+            <p>Auto-provisioned Grafana datasource and visual dashboard tracking request throughput, P95 latency, deployment replicas, pipeline execution duration, and active alerts.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL: TRIGGER CI/CD PIPELINE -->
+  <div class="modal-backdrop hidden" id="pipeline-modal">
+    <div class="modal-card" role="dialog" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <h3 id="modal-title">Trigger Automated Build, Test &amp; Deploy Pipeline</h3>
+        <button class="btn-close" id="btn-close-modal" aria-label="Close">&times;</button>
+      </div>
+      <form id="form-trigger-pipeline">
+        <div class="form-group">
+          <label for="modal-service">Target Microservice</label>
+          <select id="modal-service" class="input-select" required>
+            <option value="payment-gateway-api">payment-gateway-api</option>
+            <option value="auth-identity-service">auth-identity-service</option>
+            <option value="order-orchestrator">order-orchestrator</option>
+            <option value="realtime-telemetry-ingest">realtime-telemetry-ingest</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="modal-branch">Git Branch</label>
+            <input type="text" id="modal-branch" class="input-text" value="main" required />
+          </div>
+          <div class="form-group">
+            <label for="modal-tag">Release Image Tag (optional)</label>
+            <input type="text" id="modal-tag" class="input-text" placeholder="Auto-bump patch version" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="modal-message">Commit Message</label>
+          <input type="text" id="modal-message" class="input-text" value="feat: zero-downtime production release with health probe verification" required />
+        </div>
+        <div class="form-group checkbox-group">
+          <input type="checkbox" id="modal-deploy-k8s" checked />
+          <label for="modal-deploy-k8s">Automatically trigger Kubernetes RollingUpdate after Docker Registry publish</label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="btn-cancel-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Execute 5-Stage Pipeline</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

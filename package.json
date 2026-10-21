@@ -1,0 +1,39 @@
+{
+  "name": "aegis-deploy-platform",
+  "version": "1.4.2",
+  "description": "Production-Ready DevOps Deployment Platform - Automated build/test pipelines, Docker registry publishing, Kubernetes deployments, rolling updates, rollbacks, and centralized Prometheus/Grafana observability.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test tests/platform.test.js",
+    "lint": "node --check src/index.js src/server.js"
+  },
+  "keywords": [
+    "devops",
+    "deployment-platform",
+    "kubernetes",
+    "docker",
+    "prometheus",
+    "grafana",
+    "nginx",
+    "github-actions",
+    "ci-cd"
+  ],
+  "author": "DevOps Platform Team",
+  "license": "MIT",
+  "dependencies": {
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "prom-client": "^15.1.3",
+    "uuid": "^11.0.5"
+  },
+  "devDependencies": {
+    "supertest": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: aegis-deploy-platform-pdb
+  namespace: production
+  labels:
+    app: aegis-deploy-platform
+spec:
+  minAvailable: "75%"
+  selector:
+    matchLabels:
+      app: aegis-deploy-platform

@@ -1,0 +1,33 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'eks-us-east-1-prod'
+    environment: 'production'
+
+rule_files:
+  - '/etc/prometheus/alert.rules.yml'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - 'alertmanager:9093'
+
+scrape_configs:
+  # 1. AegisDeploy Node.js Control Plane & Microservice Telemetry
+  - job_name: 'aegis-deploy-platform'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    static_configs:
+      - targets:
+          - 'aegis-platform:3000'
+        labels:
+          service: 'aegis-deploy-platform'
+          namespace: 'production'
+
+  # 2. Prometheus Self-Monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets:
+          - 'localhost:9090'

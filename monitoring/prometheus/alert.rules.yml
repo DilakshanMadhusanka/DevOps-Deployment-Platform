@@ -1,0 +1,62 @@
+groups:
+  - name: aegis_devops_platform_slo_alerts
+    interval: 15s
+    rules:
+      - alert: HighHttp5xxErrorRate
+        expr: |
+          (
+            sum(rate(devops_http_request_duration_seconds_count{status_code=~"5.."}[5m]))
+            /
+            sum(rate(devops_http_request_duration_seconds_count[5m]))
+          ) * 100 > 2.0
+        for: 2m
+        labels:
+          severity: critical
+          team: platform-sre
+        annotations:
+          summary: "High HTTP 5xx Error Rate ({{ $value | printf \"%.2f\" }}%)"
+          description: "HTTP 5xx error rate across Nginx ingress exceeded 2.0% SLO for 2 minutes. Consider rolling back the latest deployment."
+
+      - alert: KubernetesPodReadinessDegraded
+        expr: |
+          devops_k8s_deployment_replicas{state="ready"} < devops_k8s_deployment_replicas{state="desired"}
+        for: 1m
+        labels:
+          severity: critical
+          team: platform-sre
+        annotations:
+          summary: "Kubernetes Deployment {{ $labels.service }} has unready pods"
+          description: "Deployment {{ $labels.service }} in namespace {{ $labels.namespace }} has fewer Ready replicas than Desired for over 1m."
+
+      - alert: IngressHighP95Latency
+        expr: |
+          histogram_quantile(0.95, sum(rate(devops_http_request_duration_seconds_bucket[5m])) by (le)) > 0.250
+        for: 3m
+        labels:
+          severity: warning
+          team: platform-sre
+        annotations:
+          summary: "High P95 HTTP Request Latency (>250ms)"
+          description: "95th percentile HTTP response time is {{ $value | printf \"%.3f\" }}s."
+
+      - alert: ClusterResourceSaturationHigh
+        expr: |
+          devops_cluster_resource_utilization_percent{resource=~"cpu|memory"} > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: platform-sre
+        annotations:
+          summary: "Cluster {{ $labels.resource }} utilization > 85%"
+          description: "Cluster {{ $labels.resource }} utilization is at {{ $value }}%."
+
+      - alert: CiCdPipelineFailureDetected
+        expr: |
+          increase(devops_pipeline_runs_total{status="failed"}[15m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          team: devops-release
+        annotations:
+          summary: "CI/CD Pipeline Failure on {{ $labels.service }}"
+          description: "An automated build/test pipeline failed for service {{ $labels.service }} on branch {{ $labels.branch }}."

@@ -1,0 +1,90 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Kubernetes Ready Replicas by Service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "devops_k8s_deployment_replicas{state=\"ready\"}",
+          "legendFormat": "{{service}} (ready)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Cluster Resource Utilization (%)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "devops_cluster_resource_utilization_percent",
+          "legendFormat": "{{resource}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "CI/CD Pipeline Executions by Status",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (status) (devops_pipeline_runs_total)",
+          "legendFormat": "{{status}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Docker Images Published to Registry",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (service) (devops_docker_images_published_total)",
+          "legendFormat": "{{service}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Kubernetes Rolling Updates & Rollbacks",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sum(devops_k8s_rolling_updates_total)",
+          "legendFormat": "Rolling Updates",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(devops_k8s_rollbacks_total)",
+          "legendFormat": "Rollbacks",
+          "refId": "B"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["devops", "kubernetes", "docker", "cicd", "prometheus"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "AegisDeploy — Kubernetes, CI/CD & Container Registry Overview",
+  "uid": "aegis-devops-overview",
+  "version": 1
+}

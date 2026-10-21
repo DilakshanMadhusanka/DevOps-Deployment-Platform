@@ -1,0 +1,126 @@
+version: '3.9'
+
+services:
+  # ==========================================================================
+  # 1. Node.js DevOps Deployment Platform Control Plane
+  # ==========================================================================
+  aegis-platform:
+    build:
+      context: .
+      target: production-nonroot
+      args:
+        APP_VERSION: 1.4.2
+        GIT_COMMIT_SHA: a9f4c82
+    container_name: aegis-deploy-platform
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - EXECUTION_MODE=hybrid
+      - DOCKER_REGISTRY=ghcr.io/devops-platform
+      - K8S_NAMESPACE=production
+      - K8S_CLUSTER=eks-us-east-1-prod
+      - PROMETHEUS_URL=http://prometheus:9090
+      - GRAFANA_URL=http://localhost:3001
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/health/live', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - devops-net
+
+  # ==========================================================================
+  # 2. Nginx Reverse Proxy & API Gateway
+  # ==========================================================================
+  nginx-gateway:
+    image: nginx:1.27-alpine
+    container_name: aegis-nginx-gateway
+    restart: unless-stopped
+    depends_on:
+      aegis-platform:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/nginx_health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - devops-net
+
+  # ==========================================================================
+  # 3. Prometheus Metrics Time-Series Server
+  # ==========================================================================
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: aegis-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - devops-net
+
+  # ==========================================================================
+  # 4. Prometheus Alertmanager
+  # ==========================================================================
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: aegis-alertmanager
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    networks:
+      - devops-net
+
+  # ==========================================================================
+  # 5. Grafana Observability & Dashboards
+  # ==========================================================================
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: aegis-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/devops-platform-dashboard.json
+    volumes:
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - devops-net
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  devops-net:
+    driver: bridge
